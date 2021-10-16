@@ -2,10 +2,6 @@ provider "aws" {
   profile    = "default"
   region     = "ap-southeast-1"
 }
-resource "aws_s3_bucket" "codeexample" {
-  bucket = "code"
-  acl    = "private"
-}
 
 data "aws_vpc" "main" {
   id       = "vpc-xxxxxx"
@@ -13,12 +9,13 @@ data "aws_vpc" "main" {
     Name = "main"
   }
 }
+
 data "aws_security_group" "test-vpc" {
   name = "test-vpc"
-  id = "sg-xxxxxxx"
+  id = "sg-xxxxxxxxxxxx"
 }
 
-data "aws_subnet" "Private-subnet-b" {
+data "aws_subnet" "Private-subnet" {
   id = "subnet-xxxxxx"
 }
 
@@ -26,32 +23,21 @@ data "aws_iam_role" "user-roles" {
   name = "user-roles"
 }
 
-resource "aws_codebuild_project" "codeexample" {
-  name          = "code-service"
-  description   = "test_codebuild_service"
-  build_timeout = "5"
-  service_role  = "arn:aws:iam::xxxxxxx:role/user-roles"
+resource "aws_instance" "testing-elastic" {
 
-  artifacts {
-    type = "NO_ARTIFACTS"
-  }
-
-  cache {
-    type     = "S3"
-    location = "${aws_s3_bucket.codeexample.bucket}"
-  }
-
-  environment {
-    compute_type                = "BUILD_GENERAL1_SMALL"
-    image                       = "aws/codebuild/standard:1.0"
-    type                        = "LINUX_CONTAINER"
-    image_pull_credentials_type = "CODEBUILD"
-  }
-
-  source {
-    type            = "GITHUB"
-    location        = "https://github.com/bagusdeo/test.git"
-    git_clone_depth = 1
-  }
-
+ami = "ami-xxxxxxxxxxxxx"
+instance_type = "t3a.small"
+key_name = "test"
+count = 1
+iam_instance_profile = data.aws_iam_role.user-roles.id
+vpc_security_group_ids = [data.aws_security_group.test-vpc.id]
+subnet_id              = data.aws_subnet.Private-subnet.id
+tags = {
+Name = "testing-elastic"
+}
+}
+resource "aws_eip" "main" {
+    count = "1"
+    vpc = true
+    depends_on = ["aws_instance.testing-elastic"]
 }
